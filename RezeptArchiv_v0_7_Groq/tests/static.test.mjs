@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import path from 'node:path';import {resolveStaticFile} from '../server/static.mjs';
+test('public root with trailing slash serves nested PDF/Word libraries',()=>{const root=path.resolve('dist')+path.sep;assert.equal(resolveStaticFile(root,'/vendor/pdf.min.js'),path.resolve('dist/vendor/pdf.min.js'));assert.equal(resolveStaticFile(root,'/vendor/jszip.min.js'),path.resolve('dist/vendor/jszip.min.js'));assert.equal(resolveStaticFile(root,'/'),path.resolve('dist/index.html'));});
+test('encoded traversal cannot expose server code or environment files',()=>{for(const url of ['/../.env','/%2e%2e/server/api.mjs','//etc/passwd'])assert.throws(()=>resolveStaticFile(path.resolve('dist'),url));});

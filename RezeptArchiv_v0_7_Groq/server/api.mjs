@@ -53,8 +53,33 @@ export function createApi({env=process.env,fetchImpl=fetch,now=Date.now}={}){
    if(active>=2)throw new ApiError(429,'BUSY','Es laufen bereits zwei KI-Anfragen. Bitte kurz warten.');
    calls=calls.filter(t=>t>now()-60000);if(calls.length>=12)throw new ApiError(429,'RATE_LIMIT','Zu viele KI-Anfragen. Bitte eine Minute warten.');calls.push(now());active++;
    try{
-     let upstream;try{upstream=await fetchImpl(GROQ_URL,{method:'POST',headers:{'authorization':'Bearer '+env.GROQ_API_KEY,'content-type':'application/json'},body:JSON.stringify({model,messages,response_format:{type:'json_schema',json_schema:{name:'recipe_result',strict:true,schema}},temperature:0.1,max_completion_tokens:12000,stream:false}),signal:AbortSignal.timeout(45000)});}catch(e){throw new ApiError(e.name==='TimeoutError'||e.name==='AbortError'?504:502,'GROQ_UNREACHABLE','Groq antwortet nicht. Bitte später erneut versuchen.');}
-     if(!upstream.ok){if(upstream.status===429)throw new ApiError(429,'GROQ_RATE_LIMIT','Groq-Anfragelimit erreicht. Bitte später erneut versuchen.');if(upstream.status===401||upstream.status===403)throw new ApiError(503,'GROQ_ACCESS','Groq-Zugang oder Modellberechtigung prüfen.');throw new ApiError(502,'GROQ_ERROR','Groq konnte die Anfrage nicht verarbeiten. Modell und Eingabe prüfen.');}
+     const payload={model,messages,response_format:{type:'json_schema',json_schema:{name:'recipe_result',strict:true,schema}},temperature:0.1,max_completion_tokens:12000,stream:false};
+     const send=async()=>{try{return await fetchImpl(GROQ_URL,{method:'POST',headers:{authorization:'Bearer '+env.GROQ_API_KEY,'content-type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(20000)});}catch(e){throw new ApiError(e.name==='TimeoutError'||e.name==='AbortError'?504:502,'GROQ_UNREACHABLE','Groq antwortet nicht. Bitte später erneut versuchen.');}};
+     let upstream=await send();
+     if(!upstream.ok){
+       let detail={};try{detail=(await upstream.json()).error||{};}catch{}
+       const code=typeof detail.code==='string'?detail.code:'',message=typeof detail.message==='string'?detail.message:'';
+       // Inspect upstream diagnostics privately; never echo source text, failed generations or secrets.
+       const unsupportedSchema=upstream.status===400&&/response_format|json_schema|structured output/i.test(message)&&/not support|unsupported|not available/i.test(message);
+       if(code==='json_validate_failed'||unsupportedSchema){
+         payload.response_format={type:'json_object'};
+         payload.messages=[{role:'system',content:'Return only a JSON object matching this exact schema: '+JSON.stringify(schema)},...messages];
+         upstream=await send();
+         if(!upstream.ok){try{detail=(await upstream.json()).error||{};}catch{detail={};}}
+       }
+       if(!upstream.ok){
+         const c=typeof detail.code==='string'?detail.code:'',m=typeof detail.message==='string'?detail.message:'';
+         const modelLabel=/^[a-zA-Z0-9_./:-]{1,120}$/.test(model)?model:'konfiguriertes Modell';
+         const label=`Groq HTTP ${upstream.status}, Modell ${modelLabel}`;
+         if(upstream.status===429)throw new ApiError(429,'GROQ_RATE_LIMIT',label+': Anfragelimit oder Tokenbudget erreicht. Bitte später erneut versuchen.');
+         if(upstream.status===401||upstream.status===403)throw new ApiError(503,'GROQ_ACCESS',label+': API-Schlüssel oder Modellberechtigung prüfen.');
+         if(c==='model_not_found'||c==='model_decommissioned'||/model.*(not found|decommissioned|does not exist)/i.test(m))throw new ApiError(503,'GROQ_MODEL',label+': Modell nicht verfügbar. GROQ_TEXT_MODEL bzw. GROQ_VISION_MODEL in Netlify prüfen.');
+         if(c==='json_validate_failed')throw new ApiError(502,'GROQ_FORMAT',label+': Groq konnte kein gültiges Rezept-JSON erzeugen. Auch der zweite Versuch im JSON-Modus ist fehlgeschlagen.');
+         if(upstream.status===413||/context|token.*(limit|exceed)|too large|maximum.*tokens/i.test(m))throw new ApiError(413,'GROQ_INPUT_LIMIT',label+': Eingabe oder angeforderte Antwort überschreitet ein Größen-/Tokenlimit. Weniger Seiten bzw. ein kürzeres Rezept versuchen.');
+         if(/image|vision|multimodal/i.test(m))throw new ApiError(502,'GROQ_IMAGE',label+': Bildanfrage abgelehnt. Bildformat und Bildunterstützung von GROQ_VISION_MODEL prüfen.');
+         throw new ApiError(502,'GROQ_ERROR',label+': Anfrage abgelehnt. Bitte diesen Fehler samt betroffenem Rezept melden.');
+       }
+     }
      let data;try{const raw=await upstream.text();if(raw.length>2000000)throw Error();data=JSON.parse(raw);}catch{throw new ApiError(502,'INVALID_AI_RESPONSE','Groq lieferte keine gültige Antwort.');}
      if(data.choices?.[0]?.finish_reason!=='stop'||!text(data.choices[0]?.message?.content,600000))throw new ApiError(502,'INCOMPLETE_RESPONSE','Die KI-Antwort ist unvollständig. Bitte das Rezept verkürzen.');
      let content;try{content=JSON.parse(data.choices[0].message.content);}catch{throw new ApiError(502,'INVALID_AI_RESPONSE','Die KI-Antwort enthält kein gültiges JSON.');}

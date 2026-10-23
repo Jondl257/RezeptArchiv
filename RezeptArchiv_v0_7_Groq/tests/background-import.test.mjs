@@ -1,10 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../frontend-groq.js',import.meta.url),'utf8');
 function context(api){const c=vm.createContext({groqApi:api,DOMException,Date,Number,Math,setTimeout,clearTimeout});vm.runInContext(source.slice(source.indexOf('  function groqWait'),source.indexOf('  let groqBackgroundBusy')),c);return c;}
-test('429 waits for provider delay, retries same page and preserves earlier successful pages',async()=>{
+test('429 waits at least 60 seconds, retries same page and preserves earlier successful pages',async()=>{
  let clock=0,failed=false;const seen=[],waits=[];const c=context(async(op,payload)=>{seen.push([op,payload.requestId]);if(op==='transcribe'){if(payload.requestId.endsWith('1')&&!failed){failed=true;throw Object.assign(Error('limit'),{status:429,retryAfterSeconds:2});}return {requestId:payload.requestId,text:'Zutaten und Schritte '+payload.requestId,issues:[]};}return {requestId:payload.requestId,originalText:payload.sourceText,recipe:{issues:[]}};});c.Date={now:()=>clock};c.tick=ms=>{clock+=ms;waits.push(ms);};vm.runInContext('groqWait=async ms=>tick(ms)',c);
  const input={isPdf:true,sourceText:'',files:[{name:'recipe.pdf'}],images:[{name:'page1',dataUrl:'image1'},{name:'page2',dataUrl:'image2'}]};const result=await c.groqImportResult(input,'job',{aborted:false},()=>{});
- assert.deepEqual(seen,[['transcribe','job-page-0'],['transcribe','job-page-1'],['transcribe','job-page-1'],['extract','job']]);assert.equal(waits.reduce((a,b)=>a+b),2000);assert.match(result.originalText,/page1/);assert.match(result.originalText,/page2/);
+ assert.deepEqual(seen,[['transcribe','job-page-0'],['transcribe','job-page-1'],['transcribe','job-page-1'],['extract','job']]);assert.equal(waits.reduce((a,b)=>a+b),60000);assert.match(result.originalText,/page1/);assert.match(result.originalText,/page2/);
  seen.length=0;await c.groqImportResult(input,'job',{aborted:false},()=>{});assert.deepEqual(seen,[['extract','job']]);
 });
 test('background save retains issues and marks imported recipe unreviewed without opening editor',async()=>{
@@ -13,3 +13,4 @@ test('background save retains issues and marks imported recipe unreviewed withou
  const result=await c.showGroqDraft({recipe:{title:'Kuchen',category:'Kuchen',portions:[],ingredientGroups:[{title:'Teig',items:['200 g Mehl']}],preparationSections:[{title:'Teig',steps:['Mischen']}],issues:['Prüfen']},originalText:'Quelle'}, {files:[{name:'Kuchen.pdf'}],images:[{name:'Seite1'}],originals:[{name:'Kuchen.pdf',dataUrl:'original'}]},true);
  assert.equal(persisted,1);assert.equal(result.durable,true);assert.equal(state.manual.length,1);assert.equal(state.manual[0].reviewed,false);assert(state.manual[0].issues.includes('Prüfen'));assert.equal(edits[result.id],state.manual[0]);
 });
+test('429 respects longer provider delays and caps automatic retries',async()=>{let clock=0,calls=0;const c=context(async()=>{calls++;throw Object.assign(Error('limit'),{status:429,retryAfterSeconds:90});});c.Date={now:()=>clock};c.tick=ms=>{clock+=ms;};vm.runInContext('groqWait=async ms=>tick(ms)',c);await assert.rejects(()=>c.groqWithRetry('extract',{}, {aborted:false},()=>{}));assert.equal(calls,4);assert.equal(clock,270000);});

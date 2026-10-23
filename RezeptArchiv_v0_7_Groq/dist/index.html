@@ -2145,7 +2145,7 @@ window.RECIPE_CHAT_EXAMPLE={"recipeId": "904d42c9-a358-5c16-9fce-a497a2a6f032", 
   }
   function groqWait(ms,signal){return new Promise((resolve,reject)=>{if(signal.aborted)return reject(new DOMException('Abgebrochen','AbortError'));const abort=()=>{clearTimeout(timer);reject(new DOMException('Abgebrochen','AbortError'));};const timer=setTimeout(()=>{signal.removeEventListener('abort',abort);resolve();},ms);signal.addEventListener('abort',abort,{once:true});});}
   async function groqWithRetry(operation,payload,signal,update){
-    for(let attempt=0;;attempt++){try{return await groqApi(operation,payload,signal);}catch(e){if(e.status!==429||attempt>=3)throw e;const seconds=Number.isFinite(e.retryAfterSeconds)&&e.retryAfterSeconds>0?e.retryAfterSeconds:60;const until=Date.now()+seconds*1000;while(Date.now()<until){update('Groq-Limit erreicht. Weiter in '+Math.ceil((until-Date.now())/1000)+' Sekunden …');await groqWait(Math.min(1000,until-Date.now()),signal);}}}
+    for(let attempt=0;;attempt++){try{return await groqApi(operation,payload,signal);}catch(e){if(e.status!==429||attempt>=3)throw e;const seconds=Math.max(60,Number.isFinite(e.retryAfterSeconds)&&e.retryAfterSeconds>0?e.retryAfterSeconds:60);const until=Date.now()+seconds*1000;while(Date.now()<until){update('Groq-Limit erreicht. Weiter in '+Math.ceil((until-Date.now())/1000)+' Sekunden …');await groqWait(Math.min(1000,until-Date.now()),signal);}}}
   }
   async function groqImportResult(current,jobId,signal,update){
     let sourceText=current.sourceText,images=current.images.map(({name,dataUrl})=>({name,dataUrl}));const pageIssues=[];

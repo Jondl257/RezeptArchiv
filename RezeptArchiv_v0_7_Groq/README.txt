@@ -1,3 +1,15 @@
+OCR-UPDATE – 24.10.2026
+- Fotos und gescannte PDF-Seiten werden lokal mit Tesseract.js 6.0.1 erkannt. Vorhandener PDF-Text wird im automatischen Layout-Modus direkt übernommen; Layoutwahl eine/zwei Spalten erzwingt OCR.
+- OCR-Sprache wählbar: Deutsch/Englisch, Rumänisch/Englisch, Italienisch/Englisch. Bei zwei Spalten wird die Seite mittig geteilt, links vor rechts. Dies ist keine automatische Layoutgarantie; bei spaltenübergreifenden Überschriften ggf. Automatisch wählen.
+- OCR-Engine und Sprachdateien werden bei Bedarf über öffentliche CDNs geladen und im Browser verarbeitet. Internet für den Erstdownload erforderlich. Bilddaten werden dabei nicht an den CDN-Anbieter hochgeladen.
+- Der Standardimport und die normale Korrektur senden ausschließlich Text an Groq. Die Rezeptfelder sollen vollständig ins Deutsche übertragen werden. Originaltext bleibt in der Quellsprache.
+- Originale und erkannter Text bleiben am Rezept erhalten. Scheitert OCR bei einer Seite, wird ein ungeprüfter Entwurf mit Hinweis statt eines vermeintlich vollständigen Teilrezepts angelegt.
+- Im Bearbeiten: Originaldatei erneut mit KI auslesen. Nur diese ausdrückliche Aktion überträgt die hinterlegten Bilder/PDF-Seiten an Groq, einzeln und mit Wartepausen bei Limits. Danach werden deutsche Änderungsvorschläge verglichen; die Übernahme bleibt manuell.
+- Hintergrundimport funktioniert in der geöffneten App; Tab offen lassen. Ergebnisse sind ungeprüft. Bildqualität, Mengen, Einheiten und Vollständigkeit am Original kontrollieren.
+- 31 Tests bestanden. Echter Tesseract-Browsertest mit einem gedruckten Testbild erfolgreich; kein Live-Groq-Test und kein Android-Leistungstest für diese Änderung.
+
+Die folgende Anleitung dokumentiert die ursprüngliche Version 0.7. Wo sie vom OCR-Update abweicht, gilt der Ablauf oben.
+
 RezeptArchiv 0.7 – Groq-Anbindung vorbereitet
 Stand: 22.10.2026
 

@@ -1,3 +1,6 @@
+ZUBEREITUNGSVORSCHLÄGE BEI UNVOLLSTÄNDIGER QUELLE
+Fehlt die Zubereitung vollständig, darf Groq beim Import einen plausiblen Ablauf aus Titel und vorhandenen Zutaten erzeugen. Garzeiten und Temperaturen dürfen dabei als Vorschläge geschätzt werden, zusätzliche Zutatenmengen nicht. Die Sektion wird KI-generierter Zubereitungsvorschlag genannt; ein ausdrücklicher Hinweis und preparationInferred=true kennzeichnen die Herkunft. Originaltext bleibt unverändert. Das Rezept wird ungeprüft abgelegt. Vorhandene Zubereitung wird weiterhin quellentreu übernommen. 34 Tests bestanden; reale Vorschlagsqualität noch nicht geprüft.
+
 FOTOANALYSE BEIM IMPORT
 Beim Upload kann „Foto / Handschrift mit KI analysieren“ aktiviert werden. Nur mit diesem Häkchen werden die vorbereiteten Bilder/PDF-Seiten direkt und einzeln an Groq gesendet. Ohne Häkchen bleibt lokale OCR/der vorhandene PDF-Text aktiv. Erfolgreich analysierte Seiten werden bei Rate-Limit-Wiederholungen wiederverwendet. Unleserliche Zahlen dürfen nicht erraten werden. Ergebnisse bleiben ungeprüft. 33 automatisierte Tests bestanden; reale Handschrifterkennung über das Groq-Konto noch nicht geprüft.
 

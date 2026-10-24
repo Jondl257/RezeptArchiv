@@ -13,8 +13,8 @@ test('PDF retains text and renders every page, including dough and filling',asyn
  const images=await context.readPdf({name:'Kuchen.pdf',arrayBuffer:async()=>new ArrayBuffer(1)});
  assert.deepEqual(rendered,[1,2]);assert.equal(images.length,2);assert.match(images[0].sourceText,/Teig/);assert.match(images[1].sourceText,/Füllung/);assert.equal(destroyed,true);
 });
-test('empty OCR and missing recipe sections are rejected',()=>{
+test('empty OCR and missing ingredients are rejected; missing preparation is retained with warning',()=>{
  const good={originalText:'Teig und Füllung',recipe:{title:'Kuchen',category:'Kuchen',portions:[],ingredientGroups:[{title:'Teig',items:['200 g Mehl']}],preparationSections:[{title:'Teig',steps:['Vermischen.']}],issues:[]}};
- assert.doesNotThrow(()=>validateExtraction(good));
- for(const bad of [{...good,originalText:' '},{...good,recipe:{...good.recipe,ingredientGroups:[]}},{...good,recipe:{...good.recipe,preparationSections:[{title:'Zubereitung',steps:[' ']}]}}])assert.throws(()=>validateExtraction(bad),e=>e.code==='INCOMPLETE_RECIPE');
+ assert.doesNotThrow(()=>validateExtraction(good));const incomplete=validateExtraction({...good,recipe:{...good.recipe,preparationSections:[]}});assert(incomplete.recipe.issues.some(x=>x.includes('Zubereitung fehlt')));
+ for(const bad of [{...good,originalText:' '},{...good,recipe:{...good.recipe,ingredientGroups:[]}}])assert.throws(()=>validateExtraction(bad),e=>e.code==='INCOMPLETE_RECIPE');
 });

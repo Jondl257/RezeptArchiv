@@ -1,3 +1,6 @@
+FOTOANALYSE BEIM IMPORT
+Beim Upload kann „Foto / Handschrift mit KI analysieren“ aktiviert werden. Nur mit diesem Häkchen werden die vorbereiteten Bilder/PDF-Seiten direkt und einzeln an Groq gesendet. Ohne Häkchen bleibt lokale OCR/der vorhandene PDF-Text aktiv. Erfolgreich analysierte Seiten werden bei Rate-Limit-Wiederholungen wiederverwendet. Unleserliche Zahlen dürfen nicht erraten werden. Ergebnisse bleiben ungeprüft. 33 automatisierte Tests bestanden; reale Handschrifterkennung über das Groq-Konto noch nicht geprüft.
+
 OCR-UPDATE – 24.10.2026
 - Fotos und gescannte PDF-Seiten werden lokal mit Tesseract.js 6.0.1 erkannt. Vorhandener PDF-Text wird im automatischen Layout-Modus direkt übernommen; Layoutwahl eine/zwei Spalten erzwingt OCR.
 - OCR-Sprache wählbar: Deutsch/Englisch, Rumänisch/Englisch, Italienisch/Englisch. Bei zwei Spalten wird die Seite mittig geteilt, links vor rechts. Dies ist keine automatische Layoutgarantie; bei spaltenübergreifenden Überschriften ggf. Automatisch wählen.
